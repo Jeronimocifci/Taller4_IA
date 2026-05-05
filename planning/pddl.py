@@ -163,30 +163,42 @@ class Problem:
 
 def is_applicable(state: State, action: Action) -> bool:
     """
-    Return True if action can be executed in state.
+    Indica si una accion puede ejecutarse en un estado dado.
 
-    An action is applicable if:
-      - All fluents in action.precond_pos are present in state.
-      - No fluent  in action.precond_neg is present in state.
+    Una accion es aplicable si y solo si:
+      1. Todos los fluentes positivos de su precondicion estan en el estado.
+      2. Ninguno de los fluentes negativos de su precondicion esta en el estado.
 
-    Tip: frozenset supports the .issubset() method and the .isdisjoint() method.
+    Como state, precond_pos y precond_neg son frozensets, podemos usar
+    operaciones de conjunto eficientes:
+      - precond_pos.issubset(state)   -> todos los positivos estan en state
+      - precond_neg.isdisjoint(state) -> ningun negativo esta en state
     """
     ### Your code here ###
-    return False
+    todos_los_positivos_se_cumplen = action.precond_pos.issubset(state)
+    ningun_negativo_se_cumple = action.precond_neg.isdisjoint(state)
+    return todos_los_positivos_se_cumplen and ningun_negativo_se_cumple
     ### End of your code ###
 
 
 def apply_action(state: State, action: Action) -> State:
     """
-    Return the new state obtained by executing action in state.
+    Aplica una accion a un estado y devuelve el nuevo estado resultante.
 
-    RESULT(s, a) = (s − DEL(a)) ∪ ADD(a)
+    Formula PDDL del operador RESULT:
+        s' = (s  -  DEL(a))  union  ADD(a)
 
-    Tip: frozenset supports set arithmetic: `|` (union) and `-` (difference).
-    The order matters: first remove del_list, then add add_list.
+    Es decir, se borran primero los fluentes del delete-list y luego se
+    anaden los del add-list. Los demas fluentes quedan intactos.
+
+    Operadores de frozenset utilizados:
+      -  '-'  diferencia de conjuntos (quita elementos)
+      -  '|'  union de conjuntos     (anade elementos)
     """
     ### Your code here ###
-    return frozenset({})
+    estado_sin_borrados = state - action.del_list
+    nuevo_estado = estado_sin_borrados | action.add_list
+    return nuevo_estado
     ### End of your code ###
 
 
@@ -241,5 +253,14 @@ def get_applicable_actions(
          Or use get_all_groundings() and filter the results by applicability.
     """
     ### Your code here ###
-    return []
+    # 1) get_all_groundings genera TODAS las instancias posibles de cada
+    #    esquema de accion, sustituyendo sus parametros por constantes
+    #    concretas del problema (robots, celdas, objetos, etc.).
+    # 2) Filtramos esas instancias dejando solo las aplicables al estado
+    #    actual usando la funcion is_applicable definida arriba.
+    todas_las_acciones = get_all_groundings(domain, objects)
+    acciones_aplicables = [
+        accion for accion in todas_las_acciones if is_applicable(state, accion)
+    ]
+    return acciones_aplicables
     ### End of your code ###
