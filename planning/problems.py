@@ -6,29 +6,39 @@ from world.rescue_layout import RescueLayout
 from world.rescue_rules import build_initial_state
 
 
+# ===========================================================================
+# Punto 1a (parte b) - Definicion de los estados objetivo (goals)
+# ===========================================================================
+#
+# Un "goal" en PDDL es un conjunto de fluentes que TODOS deben estar presentes
+# en el estado final para considerar resuelto el problema.
+#
+# En esta implementacion el goal se representa como un frozenset de fluentes,
+# y la funcion Problem.isGoalState(state) verifica si goal.issubset(state).
+# ===========================================================================
+
+
 class SimpleRescueProblem(Problem):
     """
-    Planning problem with a single patient to rescue.
+    Problema de rescate con UN solo paciente.
 
     Goal: Rescued(patient_0)
 
-    The robot must:
-      1. Pick up medical supplies and set them up at the medical post.
-      2. Bring the patient to the medical post.
-      3. Execute the Rescue action.
-
-    Tip: The goal is a frozenset containing the single fluent ("Rescued", "patient_0").
-         Use problem.isGoalState(state) to test whether a state satisfies the goal.
+    Para alcanzarlo, el robot debe:
+        1. Recoger los suministros y llevarlos al puesto medico (SetupSupplies).
+        2. Llevar al paciente hasta el puesto medico.
+        3. Ejecutar la accion Rescue sobre el paciente.
     """
 
     def __init__(self, layout: RescueLayout) -> None:
+        # build_initial_state convierte el layout en un estado PDDL
+        # (conjunto de fluentes) y un diccionario de objetos por tipo.
         initial_state, objects = build_initial_state(layout)
 
-        ### Your code here ###
-        # Define the goal: patient_0 must be rescued.
-        # Tip: The goal is a frozenset of fluents that must all be True in the goal state.
-        goal = frozenset({})
-        ### End of your code ###
+        # El estado objetivo solo exige que patient_0 este rescatado.
+        # build_initial_state nombra a los pacientes como patient_0,
+        # patient_1, ..., asi que en el caso simple basta con patient_0.
+        goal = frozenset({("Rescued", "patient_0")})
 
         super().__init__(initial_state, goal, DOMAIN, objects)
         self.layout = layout
@@ -36,24 +46,19 @@ class SimpleRescueProblem(Problem):
 
 class MultiRescueProblem(Problem):
     """
-    Planning problem with multiple patients to rescue.
+    Problema de rescate con MULTIPLES pacientes.
 
-    Goal: Rescued(patient_0) ∧ Rescued(patient_1) ∧ ... ∧ Rescued(patient_n)
+    Goal: Rescued(patient_0) AND Rescued(patient_1) AND ... AND Rescued(patient_n)
 
-    The robot must rescue every patient listed in the layout.
-
-    Tip: Build the goal as a frozenset of ("Rescued", patient) fluents,
-         one for each patient in objects["patients"].
+    El robot debe rescatar a TODOS los pacientes presentes en el layout.
     """
 
     def __init__(self, layout: RescueLayout) -> None:
         initial_state, objects = build_initial_state(layout)
 
-        ### Your code here ###
-        # Define the goal: every patient must be rescued.
-        # Tip: Use a set comprehension over objects["patients"].
-        goal = frozenset({})
-        ### End of your code ###
+        # Construimos un fluente ("Rescued", p) por cada paciente del layout.
+        # objects["patients"] es la lista ["patient_0", "patient_1", ...].
+        goal = frozenset({("Rescued", p) for p in objects["patients"]})
 
         super().__init__(initial_state, goal, DOMAIN, objects)
         self.layout = layout
