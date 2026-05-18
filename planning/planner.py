@@ -177,38 +177,52 @@ def regress(goal_set: State, action: Action) -> State | None:
 
 def backwardSearch(problem: Problem) -> list[Action]:
     ### Your code here ###
+    from collections import deque
+
     estado_inicial = problem.getStartState()
-    meta = problem.goal
     acciones = get_all_groundings(problem.domain, problem.objects)
 
     # Predicados que nunca cambian (no aparecen en ningún add_list ni del_list)
     predicados_estaticos = {"MedicalPost", "Adjacent", "Pickable"}
 
+    def limpiar(subgoal):
+        # Quita estáticos ya garantizados por el inicial y rechaza el subgoal
+        # si exige un estático imposible (no está en el inicial).
+        resultado = set()
+        for fluente in subgoal:
+            if fluente[0] in predicados_estaticos:
+                if fluente in estado_inicial:
+                    continue
+                return None
+            resultado.add(fluente)
+        return frozenset(resultado)
+
+    meta = limpiar(problem.goal)
+    if meta is None:
+        return []
     if meta.issubset(estado_inicial):
         return []
 
-    cola = Queue()
-    cola.push((meta, []))
+    cola = deque()
+    cola.append((meta, []))
     visitados = {meta}
 
-    while not cola.isEmpty():
-        sub_meta, plan = cola.pop()
+    while cola:
+        sub_meta, plan = cola.popleft()
         problem._expanded += 1
 
+        faltantes = sub_meta - estado_inicial
+
         for accion in acciones:
+            if accion.add_list.isdisjoint(faltantes):
+                continue
+
             nueva_meta = regress(sub_meta, accion)
             if nueva_meta is None:
                 continue
-            if nueva_meta in visitados:
-                continue
 
-            # Descartar si exige un fluente estático que no está en el estado inicial
-            descartar = False
-            for fluente in nueva_meta:
-                if fluente[0] in predicados_estaticos and fluente not in estado_inicial:
-                    descartar = True
-                    break
-            if descartar:
+            nueva_meta = limpiar(nueva_meta)
+            if nueva_meta is None or nueva_meta in visitados:
                 continue
 
             nuevo_plan = [accion] + plan
@@ -217,7 +231,7 @@ def backwardSearch(problem: Problem) -> list[Action]:
                 return nuevo_plan
 
             visitados.add(nueva_meta)
-            cola.push((nueva_meta, nuevo_plan))
+            cola.append((nueva_meta, nuevo_plan))
 
     return []
     ### End of your code ###
