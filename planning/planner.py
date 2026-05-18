@@ -182,12 +182,9 @@ def backwardSearch(problem: Problem) -> list[Action]:
     estado_inicial = problem.getStartState()
     acciones = get_all_groundings(problem.domain, problem.objects)
 
-    # Predicados que nunca cambian (no aparecen en ningún add_list ni del_list)
     predicados_estaticos = {"MedicalPost", "Adjacent", "Pickable"}
 
     def limpiar(subgoal):
-        # Quita estáticos ya garantizados por el inicial y rechaza el subgoal
-        # si exige un estático imposible (no está en el inicial).
         resultado = set()
         for fluente in subgoal:
             if fluente[0] in predicados_estaticos:
