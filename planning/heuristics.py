@@ -45,7 +45,39 @@ def ignorePreconditionsHeuristic(
          Remember: with no preconditions, every grounding is "applicable".
     """
     ### Your code here ###
-
+    # Compute unsatisfied goal fluents
+    unsatisfied = goal - state
+    
+    # If all goal fluents are already satisfied, cost is 0
+    if not unsatisfied:
+        return 0.0
+    
+    # Generate all groundings (preconditions are ignored in this relaxation)
+    from planning.pddl import get_all_groundings
+    all_actions = get_all_groundings(domain, objects)
+    
+    # Greedy set cover: repeatedly pick the action that covers the most unsatisfied fluents
+    count = 0
+    while unsatisfied:
+        # Find the action that covers the most unsatisfied fluents
+        best_action = None
+        best_coverage = 0
+        
+        for action in all_actions:
+            coverage = len(action.add_list & unsatisfied)  # Intersection: fluents added that are unsatisfied
+            if coverage > best_coverage:
+                best_coverage = coverage
+                best_action = action
+        
+        # If no action covers any unsatisfied fluent, we're stuck (shouldn't happen in valid problems)
+        if best_action is None or best_coverage == 0:
+            break
+        
+        # Remove covered fluents from unsatisfied set
+        unsatisfied = unsatisfied - best_action.add_list
+        count += 1
+    
+    return float(count)
     ### End of your code ###
 
 
@@ -79,5 +111,36 @@ def ignoreDeleteListsHeuristic(
          each step (preconditions still apply in the relaxed model).
     """
     ### Your code here ###
-
+    from planning.pddl import get_applicable_actions
+    
+    # Start from the given state in the relaxed problem
+    relaxed_state = state
+    count = 0
+    
+    # Hill-climbing: repeatedly pick the action that adds the most unsatisfied goal fluents
+    while not goal.issubset(relaxed_state):
+        unsatisfied = goal - relaxed_state
+        
+        # Get all applicable actions in the relaxed state
+        applicable = get_applicable_actions(relaxed_state, domain, objects)
+        
+        # Find the action that adds the most unsatisfied goal fluents
+        best_action = None
+        best_progress = 0
+        
+        for action in applicable:
+            progress = len(action.add_list & unsatisfied)  # Fluents added that satisfy goal
+            if progress > best_progress:
+                best_progress = progress
+                best_action = action
+        
+        # If no action makes progress, we're stuck
+        if best_action is None or best_progress == 0:
+            break
+        
+        # Apply the action in the relaxed problem (only add fluents, never delete)
+        relaxed_state = relaxed_state | best_action.add_list
+        count += 1
+    
+    return float(count)
     ### End of your code ###
